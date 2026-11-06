@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "app.moviedb.designsystem"
+    namespace = "app.openstream.designsystem"
     compileSdk {
         version = release(Deps.COMPILE_SDK)
     }

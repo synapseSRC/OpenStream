@@ -27,7 +27,7 @@ Reference: the "Home" boards in the UI prototype canvas. The styling follows Mat
 
 | Part | Content |
 |---|---|
-| App bar | Title "MovieDB", subtitle "What is on tonight". Two round icon buttons: theme picker and favorites. The favorites button shows a count badge. |
+| App bar | Title "OpenStream", subtitle "What is on tonight". Two round icon buttons: theme picker and favorites. The favorites button shows a count badge. |
 | Popular | Section title and subtitle. A horizontal strip of wide cards, snapping one card at a time. |
 | Top Rated | Section title and subtitle. A horizontal strip of posters, each with a rating badge, then title and release date below. |
 | Now Playing | Section title and subtitle. A horizontal strip of wide cards: a 16:9 backdrop with the release date on it, then the title and rating below. |

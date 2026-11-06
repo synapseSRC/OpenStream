@@ -1,6 +1,6 @@
 # Architecture
 
-MovieDB is a multi-module Android app. The UI is Jetpack Compose with Material 3 Expressive, the presentation pattern is **MVVM with unidirectional data flow**, and dependencies are injected with **Hilt**. This page fixes the structure before code starts. Library choices and their reasons are in [libraries.md](libraries.md). The data contract is in [api/tmdb_overview.md](api/tmdb_overview.md).
+OpenStream is a multi-module Android app. The UI is Jetpack Compose with Material 3 Expressive, the presentation pattern is **MVVM with unidirectional data flow**, and dependencies are injected with **Hilt**. This page fixes the structure before code starts. Library choices and their reasons are in [libraries.md](libraries.md). The data contract is in [api/tmdb_overview.md](api/tmdb_overview.md).
 
 ## Goals that shape the design
 
@@ -49,13 +49,13 @@ Ask these three questions in order:
 2. Does it know about `Movie`, `SectionState`, a repository, or any other data type? Then it is not `:designsystem`.
 3. Is only one feature using it? Then it stays in that feature.
 
-The module boundary makes the answer checkable: a wrong import fails the build. To keep `:designsystem` free of data types, its components take plain values (`movieId: Int`, `title: String`, `rating: Double`) and ready-made text, never a `Movie` or an `AppError`. For the same reason `MoviedbTheme` takes `paletteId` and `darkTheme`, not `ThemeSettings`. `:app` turns the stored settings into those two values.
+The module boundary makes the answer checkable: a wrong import fails the build. To keep `:designsystem` free of data types, its components take plain values (`movieId: Int`, `title: String`, `rating: Double`) and ready-made text, never a `Movie` or an `AppError`. For the same reason `OpenStreamTheme` takes `paletteId` and `darkTheme`, not `ThemeSettings`. `:app` turns the stored settings into those two values.
 
 Examples from the Home screen:
 
 | Piece | Lives in | Why |
 |---|---|---|
-| `MoviedbTheme`, palettes, `pressedCornerShape` | `:designsystem` | Every screen uses the theme. |
+| `OpenStreamTheme`, palettes, `pressedCornerShape` | `:designsystem` | Every screen uses the theme. |
 | `RatingChip`, `RatingBadge`, `PosterArt`, `ErrorCard`, `EmptyCard`, `OfflineSheet` | `:designsystem` | Home, Detail, and Favorites all need them, and they need only plain values. |
 | `PopularCard`, `PosterCard`, `PosterSection`, loading skeletons | `:feature:home` | Only Home shows these strips. They take a `Movie`. |
 | `SectionStateContent`, the error and empty wording | `:feature:home` | It maps `SectionState` and `AppError` to text. |
@@ -68,12 +68,12 @@ Examples from the Home screen:
 
 **Why shared repositories live in `:core`.** `MovieRepository` is used by Home and Detail, and `FavoriteRepository` by Detail and Favorites. Putting them in a feature would force one feature to depend on another, which rule 2 forbids.
 
-Build configuration follows the existing setup: `buildSrc/Deps.kt` is the single source for versions, SDK levels, and plugin ids. New modules use namespaces under `app.moviedb` (`app.moviedb.core`, `app.moviedb.designsystem`, `app.moviedb.home`, and so on) and the same SDK constants. Under AGP 9, library modules use the `com.android.library` plugin and do **not** apply `org.jetbrains.kotlin.android`, because Kotlin support is built in.
+Build configuration follows the existing setup: `buildSrc/Deps.kt` is the single source for versions, SDK levels, and plugin ids. New modules use namespaces under `app.openstream` (`app.openstream.core`, `app.openstream.designsystem`, `app.openstream.home`, and so on) and the same SDK constants. Under AGP 9, library modules use the `com.android.library` plugin and do **not** apply `org.jetbrains.kotlin.android`, because Kotlin support is built in.
 
 ## Package layout
 
 ```
-:core  (app.moviedb.core)            no Compose
+:core  (app.openstream.core)            no Compose
   network/       Retrofit service, DTOs, auth interceptor, safeApiCall
   database/      Room database, FavoriteMovieEntity, FavoriteDao
   data/          MovieRepository, FavoriteRepository, ThemeRepository, mappers
@@ -81,13 +81,13 @@ Build configuration follows the existing setup: `buildSrc/Deps.kt` is the single
   common/        AppError, SectionState, TmdbImage (image URL builder)
   di/            Hilt modules
 
-:designsystem  (app.moviedb.designsystem)   Compose only
-  theme/         MoviedbTheme, Palette, palette/ (one file per palette), Type, pressedCornerShape
+:designsystem  (app.openstream.designsystem)   Compose only
+  theme/         OpenStreamTheme, Palette, palette/ (one file per palette), Type, pressedCornerShape
   component/     RatingChip, RatingBadge, PosterArt, ErrorCard, EmptyCard, OfflineSheet, pulse
   format/        toRatingLabel, toCardDate
   res/           Strings and drawables used by the components above
 
-:feature:home  (app.moviedb.home)
+:feature:home  (app.openstream.home)
   ui/            HomeRoute, HomeScreen, HomeViewModel, HomeUiState, and the Home-only
                  components (PopularCard, PosterCard, sections, skeletons, AppearanceSheet)
   (same shape for detail and favorites)
@@ -227,7 +227,7 @@ The prototype includes a theme picker (mode and palette). It is an optional addi
 
 - `ThemeSettings(mode: ThemeMode, paletteId: String)`, with `ThemeMode` being `SYSTEM`, `LIGHT`, or `DARK`.
 - `ThemeRepository` exposes `Flow<ThemeSettings>` and `suspend fun update(...)`. It is stored in Room, in one row of the `theme_settings` table with two text columns: the `ThemeMode` name and the palette id. A name the app does not know falls back to the default, so an old or odd value never crashes. Room is already in the project, so this needs no second storage library.
-- `MainViewModel` in `:app` reads the settings and saves changes. `MainActivity` collects them, works out whether the theme is dark, and passes `paletteId` and `darkTheme` to `MoviedbTheme` in `:designsystem`. `ThemeSettings` itself stays in `:core`. Features read `MaterialTheme.colorScheme` and never know which palette is active.
+- `MainViewModel` in `:app` reads the settings and saves changes. `MainActivity` collects them, works out whether the theme is dark, and passes `paletteId` and `darkTheme` to `OpenStreamTheme` in `:designsystem`. `ThemeSettings` itself stays in `:core`. Features read `MaterialTheme.colorScheme` and never know which palette is active.
 - Palettes are written out by hand: one file per palette in `:designsystem/.../theme/palette/`, each with a light and a dark `ColorScheme`. A unit test checks text contrast for every palette.
 - To avoid a flash of the wrong theme at startup, `MainActivity` draws nothing until the saved settings are read. Room answers within a frame or two.
 - The wallpaper-based palette needs Android 12 (API 31). `MIN_SDK` is 30, so that option is hidden when `Build.VERSION.SDK_INT < 31`.

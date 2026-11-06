@@ -1,0 +1,29 @@
+package app.openstream.core.di
+
+import android.content.Context
+import androidx.room.Room
+import app.openstream.core.data.local.FavoriteDao
+import app.openstream.core.data.local.MovieDatabase
+import app.openstream.core.data.local.ThemeDao
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): MovieDatabase =
+        Room.databaseBuilder(context, MovieDatabase::class.java, "openstream.db").build()
+
+    @Provides
+    fun provideFavoriteDao(database: MovieDatabase): FavoriteDao = database.favoriteDao()
+
+    @Provides
+    fun provideThemeDao(database: MovieDatabase): ThemeDao = database.themeDao()
+}

@@ -1,22 +1,22 @@
-# MovieDB Docs
+# OpenStream Docs
 
 <table>
 <tr>
 <td width="50%">
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/first.webp" alt="MovieDB screenshot 1" width="100%" />
+<img src="../screenshot/first.webp" alt="OpenStream screenshot 1" width="100%" />
 </td>
 <td width="50%">
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/second.webp" alt="MovieDB screenshot 2" width="100%" />
+<img src="../screenshot/second.webp" alt="OpenStream screenshot 2" width="100%" />
 </td>
 </tr>
 <tr>
 <td colspan="2">
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/third.webp" alt="MovieDB screenshot 3" width="49%" />
+<img src="../screenshot/third.webp" alt="OpenStream screenshot 3" width="49%" />
 </td>
 </tr>
 </table>
 
-Planning docs for MovieDB: a movie app built on the TMDB API, using MVVM, Hilt, and Material 3 Expressive.
+Planning docs for OpenStream: a movie app built on the TMDB API, using MVVM, Hilt, and Material 3 Expressive.
 
 A checklist of what the app does is in [requirements/requirements.md](requirements/requirements.md).
 

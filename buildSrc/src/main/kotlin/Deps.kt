@@ -1,9 +1,9 @@
 // need to suppress, cuz the props will be generated into a .class file
 @Suppress("unused")
 object Deps {
-    const val APP_NAME = "MovieDB"
+    const val APP_NAME = "OpenStream"
 
-    const val NAMESPACE = "app.moviedb"
+    const val NAMESPACE = "app.openstream"
     const val MIN_SDK = 30
     const val TARGET_SDK = 37
     const val COMPILE_SDK = 37

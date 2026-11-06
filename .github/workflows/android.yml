@@ -1,0 +1,183 @@
+name: 🤖 Build Android App
+
+on:
+  push:
+    branches:
+      - main
+      - 'rebrand/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      send_telegram:
+        description: 'Send the APKs to Telegram as well'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 🧪 Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Run unit tests
+        run: ./gradlew --no-daemon testDebugUnitTest
+
+  build:
+    name: 📦 Build APK
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
+          accept-android-sdk-licenses: true
+          log-accepted-android-sdk-licenses: false
+
+      # API 37 is published as extension versions (android-37.0 / 37.1 / 37.2),
+      # not a bare "android-37", so try the ids in order and let AGP pull whatever
+      # is still missing on its own.
+      - name: Install platform and build-tools for API 37
+        continue-on-error: true
+        run: |
+          for pkg in "platforms;android-37" "platforms;android-37.0" "build-tools;37.0.0"; do
+            echo "Installing $pkg"
+            sdkmanager "$pkg" || echo "::warning::$pkg is not available in this channel"
+          done
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      # Python is only needed for the Telegram upload; installed up front so the
+      # send step does no pip work of its own.
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Telethon
+        run: python -m pip install --disable-pip-version-check "telethon>=1.34"
+
+      - name: 🔑 Write local.properties (TMDB credentials)
+        env:
+          TMDB_ACCESS_TOKEN: ${{ secrets.TMDB_ACCESS_TOKEN }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: |
+          set -eu
+          {
+            printf 'access_token=%s\n' "${TMDB_ACCESS_TOKEN:-}"
+            printf 'api_key=%s\n' "${TMDB_API_KEY:-}"
+            printf 'sdk.dir=%s\n' "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          } > local.properties
+          if [ -z "${TMDB_ACCESS_TOKEN:-}" ]; then
+            echo "::warning::TMDB_ACCESS_TOKEN is not set - the APK still builds, but API calls fail at runtime."
+          fi
+
+      - name: 🛠 Build debug and release APKs
+        run: ./gradlew --no-daemon --stacktrace assembleDebug assembleRelease
+
+      - name: 🏷 Collect the APKs
+        id: apk
+        env:
+          GH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          short="${GH_SHA:0:7}"
+          out="$(pwd)/out"
+          mkdir -p "$out"
+          cp app/build/outputs/apk/debug/app-debug.apk "$out/OpenStream-debug-$short.apk"
+          # No signingConfig in app/build.gradle.kts, so the release APK is unsigned.
+          release_apk="$(find app/build/outputs/apk/release -name '*.apk' | head -n1)"
+          cp "$release_apk" "$out/OpenStream-release-$short.apk"
+          ls -lh "$out"
+          printf 'dir=%s\n' "$out" >> "$GITHUB_OUTPUT"
+          printf 'sha=%s\n' "$short" >> "$GITHUB_OUTPUT"
+
+      - name: 📤 Upload APK artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: OpenStream-APK-${{ github.sha }}
+          path: ${{ steps.apk.outputs.dir }}/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 🧭 Decide whether to post to Telegram
+        # `secrets` is not available in step-level `if`, so presence is checked
+        # here and only a boolean leaves the step. Values are never printed.
+        id: tg
+        if: github.event_name != 'pull_request'
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SEND: ${{ github.event.inputs.send_telegram }}
+        run: |
+          set -eu
+          if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not configured - skipping the upload."
+          elif [ "${SEND:-}" = "false" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Deselected at dispatch - skipping the upload."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 📨 Send APKs to Telegram
+        if: steps.tg.outputs.enabled == 'true'
+        env:
+          API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          APK_DIR: ${{ steps.apk.outputs.dir }}
+          APK_SHA: ${{ steps.apk.outputs.sha }}
+          # Branch names are attacker-controlled on PR events; passed via env so it
+          # is never interpolated into the script body.
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python scripts/telegram_send.py \
+            --dir "$APK_DIR" \
+            --build-sha "$APK_SHA" \
+            --branch "$BRANCH_NAME" \
+            --run-url "$RUN_URL"
+
+      - name: 🧹 Remove local.properties
+        if: always()
+        run: rm -f local.properties

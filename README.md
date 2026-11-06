@@ -1,32 +1,33 @@
 <div align="center">
-  <a href="https://github.com/ainulbedjo/owl">
-    <img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/app/src/main/res/drawable/play_store_512.png" width="100" height="100">
+  <a href="https://github.com/synapseSRC/OpenStream">
+    <img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/app/src/main/res/drawable/play_store_512.png" width="100" height="100" alt="OpenStream icon">
   </a>
-  <h1>MovieDB</h1>
+  <h1>OpenStream</h1>
   <p>An Android app for browsing movies from TMDB, built with Jetpack Compose and Material 3 Expressive.</p>
+  <p><sub>Developed by <strong>StudioAs Inc.</strong> · Lead developer <a href="https://github.com/TheRealAshik">@TheRealAshik</a></sub></p>
 </div>
 
 <table>
 <tr>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/home.png" alt="Home screenshot" width="100%" />
+<img src="screenshot/home.png" alt="Home screenshot" width="100%" />
 </td>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/detail.png" alt="Detail screenshot" width="100%" />
+<img src="screenshot/detail.png" alt="Detail screenshot" width="100%" />
 </td>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/favorites.png" alt="Favorites screenshot" width="100%" />
+<img src="screenshot/favorites.png" alt="Favorites screenshot" width="100%" />
 </td>
 </tr>
 <tr>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/theme.png" alt="Theme screenshot" width="100%" />
+<img src="screenshot/theme.png" alt="Theme screenshot" width="100%" />
 </td>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/offline.png" alt="Offline screenshot" width="100%" />
+<img src="screenshot/offline.png" alt="Offline screenshot" width="100%" />
 </td>
 <td>
-<img src="https://raw.githubusercontent.com/ainulbedjo/owl/refs/heads/master/screenshot/chucker.png" alt="Chucker screenshot" width="100%" />
+<img src="screenshot/chucker.png" alt="Chucker screenshot" width="100%" />
 </td>
 </tr>
 </table>
@@ -37,6 +38,38 @@
 - **Favorites**: your saved movies, newest first. Open or remove one, and every screen updates live.
 - **Appearance**: light, dark, or system mode and a choice of color palettes, saved between launches.
 - **Offline**: only a lost connection opens a "No connection" sheet. Other errors stay in the section that failed.
+
+## Build
+
+```bash
+# TMDB credentials go in local.properties (gitignored) — never committed.
+echo "access_token=<TMDB read access token>" >> local.properties
+echo "api_key=<TMDB v3 api key>" >> local.properties
+
+./gradlew assembleDebug          # app/build/outputs/apk/debug/
+./gradlew assembleRelease        # minified + shrunk, unsigned
+./gradlew test                   # unit tests
+```
+
+Application id and namespace are `app.openstream`; the module list is in [`settings.gradle.kts`](settings.gradle.kts). Versions live in [`Deps.kt`](buildSrc/src/main/kotlin/Deps.kt).
+
+## CI: build the APK and post it to Telegram
+
+[` .github/workflows/android.yml `](.github/workflows/android.yml) builds both debug and release APKs on every push and pull request, uploads them as workflow artifacts, and sends them to a Telegram chat or forum topic with [`scripts/telegram_send.py`](scripts/telegram_send.py).
+
+Repo **Settings → Secrets and variables → Actions** needs:
+
+| Secret | Used for |
+|---|---|
+| `TMDB_ACCESS_TOKEN` | written into `local.properties` so the build has a working API token |
+| `TMDB_API_KEY` | same, for the v3 key |
+| `TELEGRAM_API_ID` | Telegram api_id from [my.telegram.org](https://my.telegram.org/) |
+| `TELEGRAM_API_HASH` | Telegram api_hash |
+| `TELEGRAM_BOT_TOKEN` | bot token from @BotFather |
+| `TELEGRAM_CHAT_ID` | target chat, group, or channel id |
+| `TELEGRAM_TOPIC_ID` | forum topic id; leave unset to post in General |
+
+Uploads are skipped on `pull_request` runs (so fork code never touches the tokens) and whenever `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is missing. `workflow_dispatch` has a `send_telegram` checkbox to skip the post while still building. The bot must be a member of the target chat, and `TELEGRAM_TOPIC_ID` only applies to forum-enabled supergroups.
 
 ## Libraries
 
@@ -57,6 +90,14 @@ Why each one was chosen is in [docs/libraries.md](docs/libraries.md). Versions a
 ## Architecture
 
 MVVM with one-way data flow: the UI draws a `UiState`, a ViewModel owns it as a `StateFlow`, and repositories return `AppResult` values instead of throwing.
+
+## Studio
+
+OpenStream is maintained by **StudioAs Inc.**, with **@TheRealAshik** as lead developer. Planning notes and per-area decisions are in [docs/](docs/README.md).
+
+## Credits and license
+
+OpenStream is a rebranded build of the original **MovieDB** app by Ainul ([ainulbedjo/owl](https://github.com/ainulbedjo/owl)). That upstream project is MIT licensed and its copyright and permission notice are retained in [LICENSE](LICENSE), as the license requires; StudioAs Inc. holds the copyright on the OpenStream modifications.
 
 ## Resources
 - [Material 3 Expressive](https://m3.material.io/blog/building-with-m3-expressive) | M3 Expressive design system
