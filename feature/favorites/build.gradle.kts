@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "app.moviedb.favorites"
+    namespace = "app.openstream.favorites"
     compileSdk {
         version = release(Deps.COMPILE_SDK)
     }

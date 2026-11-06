@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "app.moviedb.core"
+    namespace = "app.openstream.core"
     compileSdk {
         version = release(Deps.COMPILE_SDK)
     }
