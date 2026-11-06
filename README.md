@@ -69,7 +69,7 @@ Repo **Settings → Secrets and variables → Actions** needs:
 | `TELEGRAM_CHAT_ID` | target chat, group, or channel id |
 | `TELEGRAM_TOPIC_ID` | forum topic id; leave unset to post in General |
 
-Uploads need the bot to be a member/admin of the chat, and topics require forum mode to be enabled.
+Uploads are skipped on `pull_request` runs (so fork code never touches the tokens) and whenever `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is missing. `workflow_dispatch` has a `send_telegram` checkbox to skip the post while still building. The bot must be a member of the target chat, and `TELEGRAM_TOPIC_ID` only applies to forum-enabled supergroups.
 
 ## Libraries
 

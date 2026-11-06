@@ -136,25 +136,47 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: 🧭 Decide whether to post to Telegram
+        # `secrets` is not available in step-level `if`, so presence is checked
+        # here and only a boolean leaves the step. Values are never printed.
+        id: tg
+        if: github.event_name != 'pull_request'
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SEND: ${{ github.event.inputs.send_telegram }}
+        run: |
+          set -eu
+          if [ -z "${TG_BOT_TOKEN:-}" ] || [ -z "${TG_CHAT_ID:-}" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID not configured - skipping the upload."
+          elif [ "${SEND:-}" = "false" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Deselected at dispatch - skipping the upload."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: 📨 Send APKs to Telegram
-        # Skipped for fork PRs (no secrets) and when Telegram secrets are absent.
-        if: >-
-          github.event_name != 'pull_request' &&
-          secrets.TELEGRAM_BOT_TOKEN != '' &&
-          secrets.TELEGRAM_CHAT_ID != '' &&
-          (github.event_name != 'workflow_dispatch' || github.event.inputs.send_telegram != 'false')
+        if: steps.tg.outputs.enabled == 'true'
         env:
           API_ID: ${{ secrets.TELEGRAM_API_ID }}
           API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          APK_DIR: ${{ steps.apk.outputs.dir }}
+          APK_SHA: ${{ steps.apk.outputs.sha }}
+          # Branch names are attacker-controlled on PR events; passed via env so it
+          # is never interpolated into the script body.
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           python scripts/telegram_send.py \
-            --dir "${{ steps.apk.outputs.dir }}" \
-            --build-sha "${{ steps.apk.outputs.sha }}" \
-            --branch "${{ github.head_ref || github.ref_name }}" \
-            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --dir "$APK_DIR" \
+            --build-sha "$APK_SHA" \
+            --branch "$BRANCH_NAME" \
+            --run-url "$RUN_URL"
 
       - name: 🧹 Remove local.properties
         if: always()
